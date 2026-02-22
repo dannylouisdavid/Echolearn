@@ -93,6 +93,8 @@ const ArrowToolbarWrapper = ({
     arrows,
     elements,
     scale,
+    translateX,
+    translateY,
     setArrows,
     setSelectedArrowId
 }: {
@@ -100,6 +102,8 @@ const ArrowToolbarWrapper = ({
     arrows: Arrow[],
     elements: CanvasElement[],
     scale: Animated.SharedValue<number>,
+    translateX: Animated.SharedValue<number>,
+    translateY: Animated.SharedValue<number>,
     setArrows: React.Dispatch<React.SetStateAction<Arrow[]>>,
     setSelectedArrowId: (id: string | null) => void
 }) => {
@@ -107,23 +111,23 @@ const ArrowToolbarWrapper = ({
     const source = elements.find(e => e.id === arrow?.sourceNodeId);
     const target = elements.find(e => e.id === arrow?.targetNodeId);
 
+    const mx = ((source?.x || 0) + (target?.x || 0)) / 2;
+    const my = ((source?.y || 0) + (target?.y || 0)) / 2;
+
     // Scale directly with the canvas
     const toolbarStyle = useAnimatedStyle(() => ({
+        left: mx * scale.value + translateX.value,
+        top: my * scale.value + translateY.value - 60,
         transform: [{ scale: scale.value }]
     }));
 
     if (!arrow || !source || !target) return null;
-
-    const mx = ((source.x || 0) + (target.x || 0)) / 2;
-    const my = ((source.y || 0) + (target.y || 0)) / 2;
 
     return (
         <Animated.View
             style={[
                 {
                     position: 'absolute',
-                    left: mx,
-                    top: my - 60,
                     zIndex: 999,
                 },
                 toolbarStyle
@@ -2124,6 +2128,8 @@ export default function PageScreen() {
                                     arrows={arrows}
                                     elements={elements}
                                     scale={scale}
+                                    translateX={translateX}
+                                    translateY={translateY}
                                     setArrows={setArrows}
                                     setSelectedArrowId={setSelectedArrowId}
                                 />
