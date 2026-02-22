@@ -95,7 +95,6 @@ export const ArrowToolbar: React.FC<ArrowToolbarProps> = ({ arrow, onUpdate, onD
 
 const styles = StyleSheet.create({
     container: {
-        position: 'absolute',
         backgroundColor: 'white',
         borderRadius: 12,
         padding: 8,

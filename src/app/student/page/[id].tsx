@@ -21,7 +21,7 @@ import { Gesture, GestureDetector, TouchableOpacity } from 'react-native-gesture
 import { CustomAlert } from '../../../components/CustomAlert';
 import Animated, { useSharedValue, useAnimatedStyle, runOnJS, withSpring, withDelay, useAnimatedProps, SharedValue } from 'react-native-reanimated';
 import { RichTextNode, RichTextBlock } from '../../../components/canvas/RichTextNode';
-import { ArrowConnector } from '../../../components/canvas/ArrowConnector';
+import { ArrowConnector, getAnchorPoint, getCurveControlPoint } from '../../../components/canvas/ArrowConnector';
 import { ArrowToolbar } from '../../../components/canvas/ArrowToolbar';
 import { AnchorPoints } from '../../../components/canvas/AnchorPoints';
 
@@ -111,8 +111,19 @@ const ArrowToolbarWrapper = ({
     const source = elements.find(e => e.id === arrow?.sourceNodeId);
     const target = elements.find(e => e.id === arrow?.targetNodeId);
 
-    const mx = ((source?.x || 0) + (target?.x || 0)) / 2;
-    const my = ((source?.y || 0) + (target?.y || 0)) / 2;
+    if (!arrow || !source || !target) return null;
+
+    const sourceAnchor = getAnchorPoint({ x: source?.x || 0, y: source?.y || 0, width: source?.width || 150, height: source?.height || 100 }, arrow.sourceAnchor);
+    const targetAnchor = getAnchorPoint({ x: target?.x || 0, y: target?.y || 0, width: target?.width || 150, height: target?.height || 100 }, arrow.targetAnchor);
+
+    let mx = (sourceAnchor.x + targetAnchor.x) / 2;
+    let my = (sourceAnchor.y + targetAnchor.y) / 2;
+
+    if (arrow.lineType === 'curved') {
+        const curvePoint = getCurveControlPoint(sourceAnchor, targetAnchor);
+        mx = curvePoint.x;
+        my = curvePoint.y;
+    }
 
     // Use layout box math to perfectly position the unscaled box.
     // Width = 220, Box center is X + 110. Top = 120 + 20px gap.

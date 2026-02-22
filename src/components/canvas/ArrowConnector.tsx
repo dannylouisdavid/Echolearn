@@ -20,7 +20,7 @@ interface ArrowConnectorProps {
 }
 
 // Helper to calculate anchor point coordinates
-const getAnchorPoint = (node: NodePosition, anchor: AnchorPosition): { x: number; y: number } => {
+export const getAnchorPoint = (node: NodePosition, anchor: AnchorPosition): { x: number; y: number } => {
     const { x, y, width, height } = node;
 
     switch (anchor) {
@@ -53,7 +53,7 @@ const getArrowHead = (
 };
 
 // Helper to calculate bezier control point for curved lines
-const getCurveControlPoint = (
+export const getCurveControlPoint = (
     source: { x: number; y: number },
     target: { x: number; y: number }
 ): { x: number; y: number } => {
