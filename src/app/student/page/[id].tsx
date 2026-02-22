@@ -1547,7 +1547,7 @@ export default function PageScreen() {
                 }
             }
 
-            showAlert("Saved", "Content saved successfully.");
+            Alert.alert("Saved", "Content saved successfully.");
         } else {
             // User is clicking "Edit" -> Start timer, enable editing
             setIsEditSession(true);
