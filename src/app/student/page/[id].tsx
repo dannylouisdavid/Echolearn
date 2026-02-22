@@ -124,7 +124,7 @@ const ArrowToolbarWrapper = ({
         <View
             style={{
                 position: 'absolute',
-                left: mx - 110,
+                left: mx - 105,
                 top: my - 140,
                 zIndex: 999,
             }}
@@ -530,7 +530,8 @@ export default function PageScreen() {
 
         // 1. Check Arrow Hits (Math-based selection using actual anchor points)
         let hitArrowId: string | null = null;
-        let minDist = 30; // 30px hit radius
+        // Scale hit radius inversely with zoom so it stays consistent in screen space
+        let minDist = 40 / (scale.value || 1);
 
         arrows.forEach(arrow => {
             const source = elements.find(e => e.id === arrow.sourceNodeId);
