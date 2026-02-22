@@ -1913,19 +1913,21 @@ export default function PageScreen() {
             ),
             headerRight: () => (
                 <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-                    {/* Comments Button (Always Visible) */}
-                    <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => setCommentsVisible(true)}>
-                        <View style={[styles.timerBtn, { backgroundColor: '#444' }]}>
-                            <MaterialCommunityIcons name="comment-text-multiple" size={20} color="white" />
-                        </View>
-                    </TouchableOpacity>
+                    {/* Comments Button - only in header for non-completed pages */}
+                    {!page?.isCompleted && (
+                        <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => setCommentsVisible(true)}>
+                            <View style={[styles.timerBtn, { backgroundColor: '#444' }]}>
+                                <MaterialCommunityIcons name="comment-text-multiple" size={20} color="white" />
+                            </View>
+                        </TouchableOpacity>
+                    )}
 
                     {/* Logic for header buttons */}
                     {page?.isCompleted ? (
                         /* COMPLETED PAGE: Comments + Log Review only */
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                             <TouchableOpacity onPress={handleOpenReview}>
-                                <View style={[styles.timerBtn, { backgroundColor: '#2196F3', paddingHorizontal: 12 }]}>
+                                <View style={[styles.timerBtn, { backgroundColor: '#4CAF50', paddingHorizontal: 12 }]}>
                                     <Text style={styles.timerBtnText}>Log Review</Text>
                                 </View>
                             </TouchableOpacity>
@@ -2011,13 +2013,6 @@ export default function PageScreen() {
                             borderBottomWidth: 1,
                             borderBottomColor: '#333',
                         }}>
-                            {/* Timer display */}
-                            <Text style={{ color: isEditSession ? '#fff' : '#888', fontSize: 14, fontWeight: '600', minWidth: 50 }}>
-                                {isEditSession
-                                    ? formatTime((page?.actualTimeMinutes || 0) * 60 + elapsedSeconds)
-                                    : (page?.actualTimeMinutes ? `${page.actualTimeMinutes.toFixed(1)} min` : '< 1 min')}
-                            </Text>
-
                             {/* Edit/Save Button */}
                             <TouchableOpacity onPress={toggleEditMode}>
                                 <View style={[styles.timerBtn, { backgroundColor: isEditSession ? '#4CAF50' : '#2196F3', paddingHorizontal: 16 }]}>
@@ -2054,6 +2049,13 @@ export default function PageScreen() {
                             <TouchableOpacity onPress={() => setAnalyticsVisible(true)}>
                                 <View style={[styles.timerBtn, { backgroundColor: '#FF9800' }]}>
                                     <MaterialCommunityIcons name="chart-bell-curve-cumulative" size={18} color="white" />
+                                </View>
+                            </TouchableOpacity>
+
+                            {/* Comments Button */}
+                            <TouchableOpacity onPress={() => setCommentsVisible(true)}>
+                                <View style={[styles.timerBtn, { backgroundColor: '#444' }]}>
+                                    <MaterialCommunityIcons name="comment-text-multiple" size={18} color="white" />
                                 </View>
                             </TouchableOpacity>
                         </View>
