@@ -126,15 +126,13 @@ export const ArrowConnector: React.FC<ArrowConnectorProps> = ({
         <React.Fragment>
             <G>
                 {/* Invisible thick line for easier tap/selection */}
+                {/* NOTE: onPress removed - SVG hit testing breaks inside AnimatedG with Reanimated transforms.
+                   Arrow selection is handled by handleCanvasTap in PageScreen using math-based hit detection. */}
                 <Path
                     d={pathD}
                     stroke="rgba(0,0,0,0.001)"
-                    strokeWidth={40 / scale} // Increase hit area even more
+                    strokeWidth={40 / scale}
                     fill="none"
-                    onPress={() => {
-                        console.log('Arrow Path Tapped!', arrow.id);
-                        onSelect?.();
-                    }}
                 />
 
                 {/* Visible arrow line */}
@@ -145,10 +143,6 @@ export const ArrowConnector: React.FC<ArrowConnectorProps> = ({
                     strokeDasharray={strokeDasharray}
                     fill="none"
                     strokeLinecap="round"
-                    onPress={() => {
-                        console.log('Visual Arrow Tapped!', arrow.id);
-                        onSelect?.();
-                    }}
                 />
 
                 {/* Start arrowhead (if both ends have arrows) */}
