@@ -1920,10 +1920,59 @@ export default function PageScreen() {
                         </View>
                     </TouchableOpacity>
 
-                    {/* Logic for Finish/Resume Buttons */}
-                    {(isTimerRunning || (elapsedSeconds > 0 && !page?.isCompleted) || (page?.actualTimeMinutes || 0) > 0) ? (
+                    {/* Logic for header buttons */}
+                    {page?.isCompleted ? (
+                        /* COMPLETED PAGE: Edit/Save + Play/Pause + Analytics + Log Review */
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                            {/* Edit/Save Button */}
+                            <TouchableOpacity onPress={toggleEditMode}>
+                                <View style={[styles.timerBtn, { backgroundColor: isEditSession ? '#4CAF50' : '#2196F3', paddingHorizontal: 12 }]}>
+                                    <Text style={styles.timerBtnText}>{isEditSession ? 'Save' : 'Edit'}</Text>
+                                </View>
+                            </TouchableOpacity>
+
+                            {/* Play/Pause Button */}
+                            <TouchableOpacity
+                                disabled={!isEditSession}
+                                onPress={async () => {
+                                    if (isTimerRunning) {
+                                        await handlePauseSession(false);
+                                    } else {
+                                        setTimerRunning(true);
+                                        setIsEditing(true);
+                                        await updatePageSession({ currentSessionStart: Date.now() });
+                                    }
+                                }}
+                            >
+                                <View style={[styles.timerBtn, {
+                                    backgroundColor: !isEditSession ? '#555' : (isTimerRunning ? '#FF9800' : '#4CAF50'),
+                                    paddingHorizontal: 12
+                                }]}>
+                                    <MaterialCommunityIcons
+                                        name={isTimerRunning ? "pause" : "play"}
+                                        size={22}
+                                        color={!isEditSession ? '#888' : 'white'}
+                                    />
+                                </View>
+                            </TouchableOpacity>
+
+                            {/* Analytics Button */}
+                            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => setAnalyticsVisible(true)}>
+                                <View style={[styles.timerBtn, { backgroundColor: '#FF9800' }]}>
+                                    <MaterialCommunityIcons name="chart-bell-curve-cumulative" size={16} color="white" />
+                                </View>
+                            </TouchableOpacity>
+
+                            {/* Log Review Button */}
+                            <TouchableOpacity onPress={handleOpenReview}>
+                                <View style={[styles.timerBtn, { backgroundColor: '#2196F3' }]}>
+                                    <Text style={styles.timerBtnText}>Log Review</Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (isTimerRunning || (elapsedSeconds > 0) || (page?.actualTimeMinutes || 0) > 0) ? (
+                        /* ACTIVE SESSION (not completed): Play/Pause + Finish */
                         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-                            {/* Play/Pause Toggle - PROMINENT */}
                             <TouchableOpacity
                                 onPress={async () => {
                                     if (isTimerRunning) {
@@ -1944,7 +1993,6 @@ export default function PageScreen() {
                                 </View>
                             </TouchableOpacity>
 
-                            {/* Finish Button - ALWAYS VISIBLE */}
                             <TouchableOpacity onPress={handleEndSession}>
                                 <View style={[styles.timerBtn, styles.stopBtn]}>
                                     <Text style={styles.timerBtnText}>Finish</Text>
@@ -1952,64 +2000,13 @@ export default function PageScreen() {
                             </TouchableOpacity>
                         </View>
                     ) : (
+                        /* NOT STARTED: Start button */
                         <View style={{ flexDirection: 'row', gap: 8 }}>
-                            {!page?.isCompleted ? (
-                                <TouchableOpacity onPress={handleStartSession}>
-                                    <View style={[styles.timerBtn, styles.startBtn]}>
-                                        <Text style={styles.timerBtnText}>Start</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ) : (
-                                <>
-                                    {/* Edit/Save Button */}
-                                    <TouchableOpacity onPress={toggleEditMode}>
-                                        <View style={[styles.timerBtn, { backgroundColor: isEditSession ? '#4CAF50' : '#2196F3', paddingHorizontal: 12 }]}>
-                                            <Text style={styles.timerBtnText}>{isEditSession ? 'Save' : 'Edit'}</Text>
-                                        </View>
-                                    </TouchableOpacity>
-
-                                    {/* Play/Pause Button */}
-                                    <TouchableOpacity
-                                        disabled={!isEditSession}
-                                        onPress={async () => {
-                                            if (isTimerRunning) {
-                                                // Pause: stop timer, disable editing
-                                                await handlePauseSession(false);
-                                            } else {
-                                                // Resume: restart timer, enable editing
-                                                setTimerRunning(true);
-                                                setIsEditing(true);
-                                                await updatePageSession({ currentSessionStart: Date.now() });
-                                            }
-                                        }}
-                                    >
-                                        <View style={[styles.timerBtn, {
-                                            backgroundColor: !isEditSession ? '#555' : (isTimerRunning ? '#FF9800' : '#4CAF50'),
-                                            paddingHorizontal: 12
-                                        }]}>
-                                            <MaterialCommunityIcons
-                                                name={isTimerRunning ? "pause" : "play"}
-                                                size={22}
-                                                color={!isEditSession ? '#888' : 'white'}
-                                            />
-                                        </View>
-                                    </TouchableOpacity>
-
-                                    {/* Analytics Button */}
-                                    <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => setAnalyticsVisible(true)}>
-                                        <View style={[styles.timerBtn, { backgroundColor: '#FF9800' }]}>
-                                            <MaterialCommunityIcons name="chart-bell-curve-cumulative" size={16} color="white" />
-                                        </View>
-                                    </TouchableOpacity>
-
-                                    {/* Log Review Button */}
-                                    <TouchableOpacity onPress={handleOpenReview}>
-                                        <View style={[styles.timerBtn, { backgroundColor: '#2196F3' }]}>
-                                            <Text style={styles.timerBtnText}>Log Review</Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                </>
-                            )}
+                            <TouchableOpacity onPress={handleStartSession}>
+                                <View style={[styles.timerBtn, styles.startBtn]}>
+                                    <Text style={styles.timerBtnText}>Start</Text>
+                                </View>
+                            </TouchableOpacity>
                         </View>
                     )}
                 </View>
