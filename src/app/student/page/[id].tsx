@@ -1162,7 +1162,7 @@ export default function PageScreen() {
         }), [scale, translateX, translateY, savedScale, savedTranslateX, savedTranslateY]);
 
     const navigationPan = useMemo(() => Gesture.Pan()
-        .enabled(currentTool === 'drag')
+        .enabled(currentTool === 'drag' || !isEditing)
         .minPointers(1)
         .maxPointers(1)
         .onStart(() => {
@@ -1174,7 +1174,7 @@ export default function PageScreen() {
             translateX.value = savedTranslateX.value + e.translationX;
             translateY.value = savedTranslateY.value + e.translationY;
         })
-        .onEnd(() => hideScrollbars()), [currentTool, translateX, translateY, savedTranslateX, savedTranslateY]);
+        .onEnd(() => hideScrollbars()), [currentTool, isEditing, translateX, translateY, savedTranslateX, savedTranslateY]);
 
     const drawingGesture = useMemo(() => Gesture.Pan()
         .enabled(currentTool !== 'text' && currentTool !== 'drag')
@@ -1250,6 +1250,7 @@ export default function PageScreen() {
         }), [currentTool, scale, translateX, translateY]);
 
     const canvasTapGesture = useMemo(() => Gesture.Tap()
+        .enabled(isEditing)
         .runOnJS(true)
         .onEnd((e) => {
             const c = toCanvas(e.x, e.y);
@@ -1261,7 +1262,7 @@ export default function PageScreen() {
                     runOnJS(handleCanvasTap)(c.x, c.y);
                 }
             }
-        }), [currentTool, scale, translateX, translateY, handleTextTap, arrows, elements]); // Added deps
+        }), [isEditing, currentTool, scale, translateX, translateY, handleTextTap, arrows, elements]); // Added deps
 
     const composedGesture = useMemo(() => Gesture.Simultaneous(
         cameraPan,
@@ -1848,8 +1849,8 @@ export default function PageScreen() {
                 </View>
             ),
             headerTitle: () => (
-                <View style={styles.headerTitle}>
-                    <Text style={[styles.title, { color: '#fff' }]}>{page?.title || "Topic"}</Text>
+                <View style={[styles.headerTitle, { flex: 1, maxWidth: 200 }]}>
+                    <Text style={[styles.title, { color: '#fff' }]} numberOfLines={1} ellipsizeMode="tail">{page?.title || "Topic"}</Text>
                     {!page?.isCompleted ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                             <Text style={[styles.timer, { color: 'white' }]}>{formatTime((page?.actualTimeMinutes || 0) * 60 + elapsedSeconds)}</Text>
@@ -1967,7 +1968,7 @@ export default function PageScreen() {
                         }}
                     >
                         {/* WRAPPED GESTURE DETECTOR: Covers everything */}
-                        <GestureDetector gesture={isEditing ? composedGesture : Gesture.Native()}>
+                        <GestureDetector gesture={composedGesture}>
                             <View style={{ flex: 1 }}>
                                 {/* LAYER 1: Background Gestures (Pan/Zoom on empty space) */}
                                 <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent', zIndex: 0 }]} />
