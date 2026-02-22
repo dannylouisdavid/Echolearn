@@ -502,9 +502,6 @@ export default function PageScreen() {
     };
 
     const handleCanvasTap = (x: number, y: number) => {
-        // DEBUG: Log tap info
-        console.log(`[handleCanvasTap] canvas=(${x.toFixed(0)}, ${y.toFixed(0)}) scale=${scale.value.toFixed(2)} tx=${translateX.value.toFixed(0)} ty=${translateY.value.toFixed(0)}`);
-
         // 0. Check Toolbar Safe Zone (Prevent closing when clicking toolbar)
         if (selectedArrowId) {
             const arrow = arrows.find(a => a.id === selectedArrowId);
@@ -542,8 +539,6 @@ export default function PageScreen() {
                 const targetAnchor = getAnchorPoint(targetNode, arrow.targetAnchor);
 
                 const dist = pointToLineDistance(x, y, sourceAnchor.x, sourceAnchor.y, targetAnchor.x, targetAnchor.y);
-                // DEBUG: Log each arrow distance
-                console.log(`  Arrow ${arrow.id.slice(0, 8)}: dist=${dist.toFixed(1)} (threshold=${minDist.toFixed(1)}) src=(${sourceAnchor.x.toFixed(0)},${sourceAnchor.y.toFixed(0)}) tgt=(${targetAnchor.x.toFixed(0)},${targetAnchor.y.toFixed(0)})`);
 
                 if (dist < minDist) {
                     minDist = dist;

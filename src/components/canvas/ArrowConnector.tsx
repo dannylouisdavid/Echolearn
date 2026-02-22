@@ -126,10 +126,10 @@ export const ArrowConnector: React.FC<ArrowConnectorProps> = ({
         <React.Fragment>
             <G>
                 {/* Invisible thick line for easier tap/selection */}
-                {/* DEBUG: Visible hit area (TEMPORARY - remove after debugging) */}
+                {/* Invisible thick line for easier tap/selection */}
                 <Path
                     d={pathD}
-                    stroke="rgba(255,0,0,0.2)"
+                    stroke="rgba(0,0,0,0.001)"
                     strokeWidth={40 / scale}
                     fill="none"
                 />
