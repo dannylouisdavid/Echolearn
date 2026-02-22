@@ -117,8 +117,13 @@ const ArrowToolbarWrapper = ({
     // Scale directly with the canvas
     const toolbarStyle = useAnimatedStyle(() => ({
         left: mx * scale.value + translateX.value,
-        top: my * scale.value + translateY.value - 60,
-        transform: [{ scale: scale.value }]
+        top: my * scale.value + translateY.value,
+        transform: [
+            { translateX: '-50%' },   // Center horizontally
+            { translateY: '-100%' },  // Anchor bottom
+            { translateY: -20 },      // Add 20px of gap above arrow
+            { scale: scale.value }   // Scale from the new center
+        ]
     }));
 
     if (!arrow || !source || !target) return null;
