@@ -114,17 +114,18 @@ const ArrowToolbarWrapper = ({
     const mx = ((source?.x || 0) + (target?.x || 0)) / 2;
     const my = ((source?.y || 0) + (target?.y || 0)) / 2;
 
-    // Scale directly with the canvas
-    const toolbarStyle = useAnimatedStyle(() => ({
-        left: mx * scale.value + translateX.value,
-        top: my * scale.value + translateY.value,
-        transform: [
-            { translateX: '-50%' },   // Center horizontally
-            { translateY: '-100%' },  // Anchor bottom
-            { translateY: -20 },      // Add 20px of gap above arrow
-            { scale: scale.value }   // Scale from the new center
-        ]
-    }));
+    // Use layout box math to perfectly position the unscaled box.
+    // Width = 220, Box center is X + 110. Top = 120 + 20px gap.
+    const toolbarStyle = useAnimatedStyle(() => {
+        const targetX = mx * scale.value + translateX.value;
+        const targetY = my * scale.value + translateY.value;
+
+        return {
+            left: targetX - 110,
+            top: targetY - 140,
+            transform: [{ scale: scale.value }] // Scales perfectly from the layout center
+        };
+    });
 
     if (!arrow || !source || !target) return null;
 
