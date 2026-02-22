@@ -84,6 +84,7 @@ export interface Page {
 
     // Content
     contentJson?: string;
+    arrowsJson?: string;
 
     attachments: Attachment[];
 

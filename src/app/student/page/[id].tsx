@@ -234,20 +234,23 @@ const DraggableNode = ({
     onTap,
     onDragEnd,
     children,
-    onLayout
+    onLayout,
+    isEditing = true
 }: {
     element: CanvasElement,
     scaleSv: SharedValue<number>,
     onTap: () => void,
     onDragEnd: (id: string, x: number, y: number) => void,
     children?: React.ReactNode,
-    onLayout?: (layout: { width: number; height: number, x: number, y: number }) => void
+    onLayout?: (layout: { width: number; height: number, x: number, y: number }) => void,
+    isEditing?: boolean
 }) => {
     const dragX = useSharedValue(0);
     const dragY = useSharedValue(0);
     const isDragging = useSharedValue(false);
 
     const gesture = Gesture.Pan()
+        .enabled(isEditing)
         .onStart(() => {
             isDragging.value = true;
         })
@@ -260,16 +263,8 @@ const DraggableNode = ({
             runOnJS(onDragEnd)(element.id, (element.x || 0) + dragX.value, (element.y || 0) + dragY.value);
         });
 
-    /*
     const tapGesture = Gesture.Tap()
-        .onEnd(() => {
-            runOnJS(onTap)();
-        });
- 
-    const composed = Gesture.Race(gesture, tapGesture);
-    */
-
-    const tapGesture = Gesture.Tap()
+        .enabled(isEditing)
         .maxDuration(250)
         .maxDistance(5)
         .onEnd(() => {
@@ -376,6 +371,9 @@ export default function PageScreen() {
     // Plan Time Modal (for teacher-assigned pages with no planned time)
     const [isPlanTimeModalVisible, setPlanTimeModalVisible] = useState(false);
     const [pendingPlannedTime, setPendingPlannedTime] = useState('');
+
+    // Edit session tracking (for completed pages: between Edit and Save clicks)
+    const [isEditSession, setIsEditSession] = useState(false);
 
     // Audio
     const { isPlaying, playSound, stopSound } = useFocusAudio();
@@ -1378,6 +1376,11 @@ export default function PageScreen() {
                             setHistory([JSON.parse(data.contentJson)]);
                         } catch (e) { console.error(e); }
                     }
+                    if (data.arrowsJson) {
+                        try {
+                            setArrows(JSON.parse(data.arrowsJson));
+                        } catch (e) { console.error('Failed to parse arrows', e); }
+                    }
 
                     // CHECK FOR ACTIVE SESSION (Offline Support)
                     if (data.currentSessionStart) {
@@ -1456,15 +1459,13 @@ export default function PageScreen() {
         // Serialize and Save using REF to ensure latest state
         const currentElements = elementsRef.current; // Use Ref
         const contentJson = JSON.stringify(currentElements);
+        const arrowsJson = JSON.stringify(arrows);
 
         // Calculate pending time if timer is running
         let newActualTime = page.actualTimeMinutes || 0;
         let newSessionStart = page.currentSessionStart;
 
-        // If saving while running, we don't stop the timer, but we should probably checkpoint? 
-        // Actually, for simple content save, we might not need to touch the timer unless we are "Leaving".
-
-        const updatedPage = { ...page, contentJson } as Page;
+        const updatedPage = { ...page, contentJson, arrowsJson } as Page;
 
         // DEV BYPASS
         if (user?.uid === 'test-user-123') {
@@ -1481,6 +1482,7 @@ export default function PageScreen() {
             const buildPayload = (p: Page) => {
                 const payload: any = {};
                 if (contentJson !== undefined) payload.contentJson = contentJson;
+                if (arrowsJson !== undefined) payload.arrowsJson = arrowsJson;
                 if (p.retentionTarget !== undefined) payload.retentionTarget = p.retentionTarget;
                 if (p.plannedTimeMinutes !== undefined) payload.plannedTimeMinutes = p.plannedTimeMinutes;
                 if (p.actualTimeMinutes !== undefined) payload.actualTimeMinutes = p.actualTimeMinutes;
@@ -1502,12 +1504,59 @@ export default function PageScreen() {
 
     const toggleEditMode = async () => {
         console.log("Toggle Edit Mode Pressed");
-        if (isEditing) {
-            // User is clicking "Check" -> Save content
-            await handleSaveContent();
-            showAlert("Saved", "Content saved successfully."); // Feedback for user
+        if (isEditSession) {
+            // User is clicking "Save" -> Save content, stop timer, record time
+            setTimerRunning(false);
+            setIsEditing(false);
+            setIsEditSession(false);
+
+            if (page) {
+                let addedMinutes = 0;
+                if (page.currentSessionStart) {
+                    const duration = Date.now() - page.currentSessionStart;
+                    addedMinutes = duration / 60000;
+                } else {
+                    addedMinutes = elapsedSeconds / 60;
+                }
+
+                const currentElements = elementsRef.current;
+                const contentJson = JSON.stringify(currentElements);
+                const arrowsJson = JSON.stringify(arrows);
+                const updatedPage: Page = {
+                    ...page,
+                    actualTimeMinutes: (page.actualTimeMinutes || 0) + addedMinutes,
+                    contentJson,
+                    arrowsJson,
+                    currentSessionStart: undefined
+                };
+
+                setPage(updatedPage);
+                setElapsedSeconds(0);
+
+                if (user?.uid === 'test-user-123') {
+                    if (userContext.addMockPage) userContext.addMockPage(updatedPage);
+                } else {
+                    try {
+                        await updateDoc(doc(db, 'pages', page.id), {
+                            actualTimeMinutes: updatedPage.actualTimeMinutes,
+                            contentJson,
+                            arrowsJson,
+                            currentSessionStart: deleteField()
+                        });
+                    } catch (e) { console.error(e); }
+                }
+            }
+
+            showAlert("Saved", "Content saved successfully.");
+        } else {
+            // User is clicking "Edit" -> Start timer, enable editing
+            setIsEditSession(true);
+            setTimerRunning(true);
+            setIsEditing(true);
+            if (page) {
+                await updatePageSession({ currentSessionStart: Date.now() });
+            }
         }
-        setIsEditing(!isEditing);
     };
 
     const handleClearPage = () => {
@@ -1816,6 +1865,7 @@ export default function PageScreen() {
                 await updateDoc(doc(db, 'pages', page.id), {
                     actualTimeMinutes: updatedPage.actualTimeMinutes,
                     contentJson: updatedPage.contentJson,
+                    arrowsJson: JSON.stringify(arrows),
                     currentSessionStart: deleteField()
                 });
             } catch (e) { console.error(e); }
@@ -1853,7 +1903,11 @@ export default function PageScreen() {
                             <Text style={[styles.timer, { color: 'white' }]}>{formatTime((page?.actualTimeMinutes || 0) * 60 + elapsedSeconds)}</Text>
                         </View>
                     ) : (
-                        <Text style={[styles.timer, { color: '#aaa' }]}>{page?.actualTimeMinutes ? `${page.actualTimeMinutes.toFixed(1)} min` : '< 1 min'}</Text>
+                        <Text style={[styles.timer, { color: isEditSession ? 'white' : '#aaa' }]}>
+                            {isEditSession
+                                ? formatTime((page?.actualTimeMinutes || 0) * 60 + elapsedSeconds)
+                                : (page?.actualTimeMinutes ? `${page.actualTimeMinutes.toFixed(1)} min` : '< 1 min')}
+                        </Text>
                     )}
                 </View >
             ),
@@ -1907,16 +1961,48 @@ export default function PageScreen() {
                                 </TouchableOpacity>
                             ) : (
                                 <>
+                                    {/* Edit/Save Button */}
                                     <TouchableOpacity onPress={toggleEditMode}>
-                                        <View style={[styles.timerBtn, { backgroundColor: isEditing ? '#4CAF50' : '#ddd' }]}>
-                                            <MaterialCommunityIcons name={isEditing ? "check" : "pencil"} size={16} color="black" />
+                                        <View style={[styles.timerBtn, { backgroundColor: isEditSession ? '#4CAF50' : '#2196F3', paddingHorizontal: 12 }]}>
+                                            <Text style={styles.timerBtnText}>{isEditSession ? 'Save' : 'Edit'}</Text>
                                         </View>
                                     </TouchableOpacity>
+
+                                    {/* Play/Pause Button */}
+                                    <TouchableOpacity
+                                        disabled={!isEditSession}
+                                        onPress={async () => {
+                                            if (isTimerRunning) {
+                                                // Pause: stop timer, disable editing
+                                                await handlePauseSession(false);
+                                            } else {
+                                                // Resume: restart timer, enable editing
+                                                setTimerRunning(true);
+                                                setIsEditing(true);
+                                                await updatePageSession({ currentSessionStart: Date.now() });
+                                            }
+                                        }}
+                                    >
+                                        <View style={[styles.timerBtn, {
+                                            backgroundColor: !isEditSession ? '#555' : (isTimerRunning ? '#FF9800' : '#4CAF50'),
+                                            paddingHorizontal: 12
+                                        }]}>
+                                            <MaterialCommunityIcons
+                                                name={isTimerRunning ? "pause" : "play"}
+                                                size={22}
+                                                color={!isEditSession ? '#888' : 'white'}
+                                            />
+                                        </View>
+                                    </TouchableOpacity>
+
+                                    {/* Analytics Button */}
                                     <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => setAnalyticsVisible(true)}>
                                         <View style={[styles.timerBtn, { backgroundColor: '#FF9800' }]}>
                                             <MaterialCommunityIcons name="chart-bell-curve-cumulative" size={16} color="white" />
                                         </View>
                                     </TouchableOpacity>
+
+                                    {/* Log Review Button */}
                                     <TouchableOpacity onPress={handleOpenReview}>
                                         <View style={[styles.timerBtn, { backgroundColor: '#2196F3' }]}>
                                             <Text style={styles.timerBtnText}>Log Review</Text>
@@ -1932,7 +2018,7 @@ export default function PageScreen() {
             headerTintColor: '#fff',
             headerShadowVisible: false,
         });
-    }, [navigation, page, isTimerRunning, elapsedSeconds, isEditing, showSettingsMenu, showShapeMenu]);
+    }, [navigation, page, isTimerRunning, elapsedSeconds, isEditing, isEditSession, showSettingsMenu, showShapeMenu]);
 
     // -- Back Button for Review Modal --
     const handleCloseReview = () => {
@@ -2032,6 +2118,7 @@ export default function PageScreen() {
                                                     key={`${el.id}-${el.x}-${el.y}`}
                                                     element={el}
                                                     scaleSv={scale}
+                                                    isEditing={isEditing}
                                                     onLayout={(layout) => {
                                                         // Only update if dimensions changed significantly to avoid loops
                                                         const wDiff = Math.abs((el.width || 0) - layout.width);
