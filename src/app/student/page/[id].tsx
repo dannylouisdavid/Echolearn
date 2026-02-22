@@ -87,23 +87,18 @@ const CurrentDrawingPath = ({ path, color, scale }: { path: string, color: strin
 // Helper Component to isolate animation hooks
 
 
-// Arrow Toolbar Wrapper to isolate hooks
+// Arrow Toolbar Wrapper - positioned in CANVAS coordinates.
+// Lives inside a camera-transformed view so no manual screen conversion needed.
 const ArrowToolbarWrapper = ({
     selectedArrowId,
     arrows,
     elements,
-    scale,
-    translateX,
-    translateY,
     setArrows,
     setSelectedArrowId
 }: {
     selectedArrowId: string,
     arrows: Arrow[],
     elements: CanvasElement[],
-    scale: Animated.SharedValue<number>,
-    translateX: Animated.SharedValue<number>,
-    translateY: Animated.SharedValue<number>,
     setArrows: React.Dispatch<React.SetStateAction<Arrow[]>>,
     setSelectedArrowId: (id: string | null) => void
 }) => {
@@ -113,8 +108,8 @@ const ArrowToolbarWrapper = ({
 
     if (!arrow || !source || !target) return null;
 
-    const sourceAnchor = getAnchorPoint({ x: source?.x || 0, y: source?.y || 0, width: source?.width || 150, height: source?.height || 100 }, arrow.sourceAnchor);
-    const targetAnchor = getAnchorPoint({ x: target?.x || 0, y: target?.y || 0, width: target?.width || 150, height: target?.height || 100 }, arrow.targetAnchor);
+    const sourceAnchor = getAnchorPoint({ x: source.x || 0, y: source.y || 0, width: source.width || 150, height: source.height || 100 }, arrow.sourceAnchor);
+    const targetAnchor = getAnchorPoint({ x: target.x || 0, y: target.y || 0, width: target.width || 150, height: target.height || 100 }, arrow.targetAnchor);
 
     let mx = (sourceAnchor.x + targetAnchor.x) / 2;
     let my = (sourceAnchor.y + targetAnchor.y) / 2;
@@ -125,36 +120,18 @@ const ArrowToolbarWrapper = ({
         my = curvePoint.y;
     }
 
-    // Scale toolbar directly with zoom (smaller when zoomed out, bigger when zoomed in)
-    // Clamped between 0.5x and 2x to keep it usable at extremes.
-    const toolbarStyle = useAnimatedStyle(() => {
-        const s = scale.value;
-        const targetX = mx * s + translateX.value;
-        const targetY = my * s + translateY.value;
-        const clampedScale = Math.min(Math.max(s, 0.5), 2);
-
-        return {
-            left: targetX - 110,
-            top: targetY - 140,
-            transform: [{ scale: clampedScale }]
-        };
-    });
-
-    if (!arrow || !source || !target) return null;
-
     return (
-        <Animated.View
-            style={[
-                {
-                    position: 'absolute',
-                    zIndex: 999,
-                },
-                toolbarStyle
-            ]}
+        <View
+            style={{
+                position: 'absolute',
+                left: mx - 110,
+                top: my - 140,
+                zIndex: 999,
+            }}
         >
             <ArrowToolbar
                 arrow={arrow}
-                scale={scale.value}
+                scale={1}
                 onUpdate={(updates) => {
                     setArrows(prev => prev.map(a => a.id === arrow.id ? { ...a, ...updates } : a));
                 }}
@@ -163,7 +140,7 @@ const ArrowToolbarWrapper = ({
                     setSelectedArrowId(null);
                 }}
             />
-        </Animated.View>
+        </View>
     );
 };
 const ActiveOverlayNode = ({
@@ -2094,6 +2071,22 @@ export default function PageScreen() {
                                     })}
                                     {/* Arrow Toolbar moved to Layer 4 (overlay) for proper z-indexing */}
                                 </Animated.View>
+
+                                {/* LAYER 3.5: Arrow Toolbar (canvas coords, high z-index, camera-transformed) */}
+                                {selectedArrowId && (
+                                    <Animated.View style={[
+                                        { position: 'absolute', left: 0, top: 0, width: 0, height: 0, overflow: 'visible', zIndex: 50 },
+                                        cameraStyle
+                                    ]} pointerEvents="box-none">
+                                        <ArrowToolbarWrapper
+                                            selectedArrowId={selectedArrowId}
+                                            arrows={arrows}
+                                            elements={elements}
+                                            setArrows={setArrows}
+                                            setSelectedArrowId={setSelectedArrowId}
+                                        />
+                                    </Animated.View>
+                                )}
                             </View>
                         </GestureDetector>
 
@@ -2140,19 +2133,7 @@ export default function PageScreen() {
                                 );
                             })()}
 
-                            {/* Arrow Toolbar - now in overlay layer for proper z-indexing */}
-                            {selectedArrowId && (
-                                <ArrowToolbarWrapper
-                                    selectedArrowId={selectedArrowId}
-                                    arrows={arrows}
-                                    elements={elements}
-                                    scale={scale}
-                                    translateX={translateX}
-                                    translateY={translateY}
-                                    setArrows={setArrows}
-                                    setSelectedArrowId={setSelectedArrowId}
-                                />
-                            )}
+                            {/* Arrow Toolbar moved to Layer 3.5 (camera-transformed) */}
                         </Animated.View>
 
                         {/* Scrollbars */}
