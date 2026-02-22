@@ -107,9 +107,9 @@ const ArrowToolbarWrapper = ({
     const source = elements.find(e => e.id === arrow?.sourceNodeId);
     const target = elements.find(e => e.id === arrow?.targetNodeId);
 
-    // Always call hook, even if data missing (conditionally render return)
+    // Scale directly with the canvas
     const toolbarStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: 1 / scale.value }]
+        transform: [{ scale: scale.value }]
     }));
 
     if (!arrow || !source || !target) return null;
