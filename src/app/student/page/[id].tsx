@@ -1922,50 +1922,10 @@ export default function PageScreen() {
 
                     {/* Logic for header buttons */}
                     {page?.isCompleted ? (
-                        /* COMPLETED PAGE: Edit/Save + Play/Pause + Analytics + Log Review */
+                        /* COMPLETED PAGE: Comments + Log Review only */
                         <View style={{ flexDirection: 'row', gap: 8 }}>
-                            {/* Edit/Save Button */}
-                            <TouchableOpacity onPress={toggleEditMode}>
-                                <View style={[styles.timerBtn, { backgroundColor: isEditSession ? '#4CAF50' : '#2196F3', paddingHorizontal: 12 }]}>
-                                    <Text style={styles.timerBtnText}>{isEditSession ? 'Save' : 'Edit'}</Text>
-                                </View>
-                            </TouchableOpacity>
-
-                            {/* Play/Pause Button */}
-                            <TouchableOpacity
-                                disabled={!isEditSession}
-                                onPress={async () => {
-                                    if (isTimerRunning) {
-                                        await handlePauseSession(false);
-                                    } else {
-                                        setTimerRunning(true);
-                                        setIsEditing(true);
-                                        await updatePageSession({ currentSessionStart: Date.now() });
-                                    }
-                                }}
-                            >
-                                <View style={[styles.timerBtn, {
-                                    backgroundColor: !isEditSession ? '#555' : (isTimerRunning ? '#FF9800' : '#4CAF50'),
-                                    paddingHorizontal: 12
-                                }]}>
-                                    <MaterialCommunityIcons
-                                        name={isTimerRunning ? "pause" : "play"}
-                                        size={22}
-                                        color={!isEditSession ? '#888' : 'white'}
-                                    />
-                                </View>
-                            </TouchableOpacity>
-
-                            {/* Analytics Button */}
-                            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => setAnalyticsVisible(true)}>
-                                <View style={[styles.timerBtn, { backgroundColor: '#FF9800' }]}>
-                                    <MaterialCommunityIcons name="chart-bell-curve-cumulative" size={16} color="white" />
-                                </View>
-                            </TouchableOpacity>
-
-                            {/* Log Review Button */}
                             <TouchableOpacity onPress={handleOpenReview}>
-                                <View style={[styles.timerBtn, { backgroundColor: '#2196F3' }]}>
+                                <View style={[styles.timerBtn, { backgroundColor: '#2196F3', paddingHorizontal: 12 }]}>
                                     <Text style={styles.timerBtnText}>Log Review</Text>
                                 </View>
                             </TouchableOpacity>
@@ -2037,6 +1997,67 @@ export default function PageScreen() {
                    By using a full-screen SVG + Transform, we achieve this for the VIEWPORT.
                  */}
                 <View style={{ flex: 1, backgroundColor: '#fff' }}>
+
+                    {/* PINNED EDIT TOOLBAR - for completed pages */}
+                    {page?.isCompleted && (
+                        <View style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 12,
+                            paddingVertical: 8,
+                            paddingHorizontal: 16,
+                            backgroundColor: '#1a1a1a',
+                            borderBottomWidth: 1,
+                            borderBottomColor: '#333',
+                        }}>
+                            {/* Timer display */}
+                            <Text style={{ color: isEditSession ? '#fff' : '#888', fontSize: 14, fontWeight: '600', minWidth: 50 }}>
+                                {isEditSession
+                                    ? formatTime((page?.actualTimeMinutes || 0) * 60 + elapsedSeconds)
+                                    : (page?.actualTimeMinutes ? `${page.actualTimeMinutes.toFixed(1)} min` : '< 1 min')}
+                            </Text>
+
+                            {/* Edit/Save Button */}
+                            <TouchableOpacity onPress={toggleEditMode}>
+                                <View style={[styles.timerBtn, { backgroundColor: isEditSession ? '#4CAF50' : '#2196F3', paddingHorizontal: 16 }]}>
+                                    <Text style={[styles.timerBtnText, { fontSize: 14 }]}>{isEditSession ? 'Save' : 'Edit'}</Text>
+                                </View>
+                            </TouchableOpacity>
+
+                            {/* Play/Pause Button */}
+                            <TouchableOpacity
+                                disabled={!isEditSession}
+                                onPress={async () => {
+                                    if (isTimerRunning) {
+                                        await handlePauseSession(false);
+                                    } else {
+                                        setTimerRunning(true);
+                                        setIsEditing(true);
+                                        await updatePageSession({ currentSessionStart: Date.now() });
+                                    }
+                                }}
+                            >
+                                <View style={[styles.timerBtn, {
+                                    backgroundColor: !isEditSession ? '#555' : (isTimerRunning ? '#FF9800' : '#4CAF50'),
+                                    paddingHorizontal: 12
+                                }]}>
+                                    <MaterialCommunityIcons
+                                        name={isTimerRunning ? "pause" : "play"}
+                                        size={20}
+                                        color={!isEditSession ? '#888' : 'white'}
+                                    />
+                                </View>
+                            </TouchableOpacity>
+
+                            {/* Analytics Button */}
+                            <TouchableOpacity onPress={() => setAnalyticsVisible(true)}>
+                                <View style={[styles.timerBtn, { backgroundColor: '#FF9800' }]}>
+                                    <MaterialCommunityIcons name="chart-bell-curve-cumulative" size={18} color="white" />
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                     {/* 
                          Note: Removed overflow: hidden to allow drawing outside visible bounds. 
                          Changed background to #fff to avoid "dim" effect.
