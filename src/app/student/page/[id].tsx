@@ -125,28 +125,18 @@ const ArrowToolbarWrapper = ({
         my = curvePoint.y;
     }
 
-    // Position toolbar in screen space with inverse scaling so it stays
-    // a consistent visual size regardless of zoom level.
-    // Arrow SELECTION is handled by handleCanvasTap (gesture-based math),
-    // NOT by SVG onPress, so the toolbar just needs correct positioning.
+    // Scale toolbar directly with zoom (smaller when zoomed out, bigger when zoomed in)
+    // Clamped between 0.5x and 2x to keep it usable at extremes.
     const toolbarStyle = useAnimatedStyle(() => {
         const s = scale.value;
         const targetX = mx * s + translateX.value;
         const targetY = my * s + translateY.value;
-        // Inverse scale: toolbar stays same visual size at any zoom
-        // Width=220, so half-width at inverse scale = 110/s... but we want
-        // the toolbar's visual center at targetX. After inverse scaling,
-        // the visual width = 220 * (1/s) * s = 220 on screen... wait no.
-        // The frame is 220x120. transform scale(1/s) makes it visually 220/s wide.
-        // We want the visual center at targetX: left + (220/s)/2 = targetX
-        // => left = targetX - 110/s
-        // But React Native scales from the VIEW CENTER not top-left.
-        // So actually: visual center = left + 110 (frame center stays same).
-        // We just need: left + 110 = targetX => left = targetX - 110
+        const clampedScale = Math.min(Math.max(s, 0.5), 2);
+
         return {
             left: targetX - 110,
             top: targetY - 140,
-            transform: [{ scale: 1 / s }]
+            transform: [{ scale: clampedScale }]
         };
     });
 
