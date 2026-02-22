@@ -125,8 +125,9 @@ const ArrowToolbarWrapper = ({
         my = curvePoint.y;
     }
 
-    // Use layout box math to perfectly position the unscaled box.
-    // Width = 220, Box center is X + 110. Top = 120 + 20px gap.
+    // Position toolbar in screen space without transform scaling.
+    // Using transform: [{scale}] breaks touch targets because RN scales
+    // visuals but keeps the touch frame at the original size.
     const toolbarStyle = useAnimatedStyle(() => {
         const targetX = mx * scale.value + translateX.value;
         const targetY = my * scale.value + translateY.value;
@@ -134,7 +135,6 @@ const ArrowToolbarWrapper = ({
         return {
             left: targetX - 110,
             top: targetY - 140,
-            transform: [{ scale: scale.value }] // Scales perfectly from the layout center
         };
     });
 
