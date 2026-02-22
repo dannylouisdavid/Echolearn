@@ -502,6 +502,9 @@ export default function PageScreen() {
     };
 
     const handleCanvasTap = (x: number, y: number) => {
+        // DEBUG: Log tap info
+        console.log(`[handleCanvasTap] canvas=(${x.toFixed(0)}, ${y.toFixed(0)}) scale=${scale.value.toFixed(2)} tx=${translateX.value.toFixed(0)} ty=${translateY.value.toFixed(0)}`);
+
         // 0. Check Toolbar Safe Zone (Prevent closing when clicking toolbar)
         if (selectedArrowId) {
             const arrow = arrows.find(a => a.id === selectedArrowId);
@@ -511,11 +514,6 @@ export default function PageScreen() {
             if (arrow && source && target) {
                 const mx = ((source.x || 0) + (target.x || 0)) / 2;
                 const my = ((source.y || 0) + (target.y || 0)) / 2;
-                // Toolbar is anchored at top: my-60.
-                // AND it is left-aligned at mx (no center transform).
-                // So it occupies [mx, my-60] to [mx+width, my-60+height].
-                // We need a Safe Zone that covers this rightward expansion.
-                // Let's cover [mx - 40, my - 80] to [mx + 350, my + 150]
                 const tbSafeX = mx - 40;
                 const tbSafeY = my - 80;
                 const tbSafeW = 390;
@@ -537,7 +535,6 @@ export default function PageScreen() {
             const source = elements.find(e => e.id === arrow.sourceNodeId);
             const target = elements.find(e => e.id === arrow.targetNodeId);
             if (source && target) {
-                // Use actual anchor points instead of center-to-center
                 const sourceNode = { x: source.x || 0, y: source.y || 0, width: source.width || 150, height: source.height || 100 };
                 const targetNode = { x: target.x || 0, y: target.y || 0, width: target.width || 150, height: target.height || 100 };
 
@@ -545,6 +542,8 @@ export default function PageScreen() {
                 const targetAnchor = getAnchorPoint(targetNode, arrow.targetAnchor);
 
                 const dist = pointToLineDistance(x, y, sourceAnchor.x, sourceAnchor.y, targetAnchor.x, targetAnchor.y);
+                // DEBUG: Log each arrow distance
+                console.log(`  Arrow ${arrow.id.slice(0, 8)}: dist=${dist.toFixed(1)} (threshold=${minDist.toFixed(1)}) src=(${sourceAnchor.x.toFixed(0)},${sourceAnchor.y.toFixed(0)}) tgt=(${targetAnchor.x.toFixed(0)},${targetAnchor.y.toFixed(0)})`);
 
                 if (dist < minDist) {
                     minDist = dist;
@@ -1094,12 +1093,14 @@ export default function PageScreen() {
 
 
     // --- UNIFIED CAMERA TRANSFORM ---
+    // IMPORTANT: translate BEFORE scale so that screen = canvas*s + tx
+    // (matching the toCanvas inverse formula)
     const cameraStyle = useAnimatedStyle(() => {
         return {
             transform: [
-                { scale: scale.value },
                 { translateX: translateX.value },
-                { translateY: translateY.value }
+                { translateY: translateY.value },
+                { scale: scale.value }
             ]
         };
     });
@@ -1107,9 +1108,9 @@ export default function PageScreen() {
     const animatedGProps = useAnimatedProps(() => {
         return {
             transform: [
-                { scale: scale.value },
                 { translateX: translateX.value },
-                { translateY: translateY.value }
+                { translateY: translateY.value },
+                { scale: scale.value }
             ]
         };
     });
