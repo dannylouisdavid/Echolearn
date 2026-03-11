@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView, Modal, Share } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Modal, Share } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -24,6 +24,14 @@ export default function StudentSearchScreen() {
     const [searching, setSearching] = useState(false);
     const [showCopiedModal, setShowCopiedModal] = useState(false);
     const [successAlert, setSuccessAlert] = useState<{ visible: boolean, message: string, onOk?: () => void }>({ visible: false, message: '' });
+
+    // Generic alert state for error/info messages (dark theme)
+    const [alertState, setAlertState] = useState<{
+        visible: boolean;
+        title: string;
+        message: string;
+        buttons?: { text: string; onPress: () => void; style?: 'cancel' | 'destructive' | 'default' }[];
+    }>({ visible: false, title: '', message: '' });
 
     const [linkedTeachers, setLinkedTeachers] = useState<any[]>([]);
     const [linkedParents, setLinkedParents] = useState<any[]>([]);
@@ -69,27 +77,28 @@ export default function StudentSearchScreen() {
     };
 
     const handleUnlink = (teacher: any) => {
-        Alert.alert(
-            "Unlink Mentor",
-            `Are you sure you want to remove ${teacher.displayName}?`,
-            [
-                { text: "Cancel", style: "cancel" },
+        setAlertState({
+            visible: true,
+            title: "Unlink Mentor",
+            message: `Are you sure you want to remove ${teacher.displayName}?`,
+            buttons: [
+                { text: "Cancel", style: "cancel", onPress: () => setAlertState(prev => ({ ...prev, visible: false })) },
                 {
                     text: "Remove",
                     style: 'destructive',
                     onPress: async () => {
                         try {
+                            setAlertState(prev => ({ ...prev, visible: false }));
                             await unlinkUser(teacher.uid, user!.uid);
-                            // Optimistic update
                             setLinkedTeachers(prev => prev.filter(t => t.uid !== teacher.uid));
                             setLinkedParents(prev => prev.filter(p => p.uid !== teacher.uid));
                         } catch (e) {
-                            Alert.alert("Error", "Could not unlink user.");
+                            setAlertState({ visible: true, title: "Error", message: "Could not unlink user." });
                         }
                     }
                 }
             ]
-        );
+        });
     };
 
     const handleCodeSearch = async () => {
@@ -100,18 +109,18 @@ export default function StudentSearchScreen() {
             const u = await getUserByInviteCode(inviteCode.trim());
             if (u) {
                 if (u.role === 'student') {
-                    Alert.alert("Invalid User", "You can only connect with Teachers or Parents.");
+                    setAlertState({ visible: true, title: "Invalid User", message: "You can only connect with Teachers or Parents." });
                 } else if (u.uid === user?.uid) {
-                    Alert.alert("That's you!", "You cannot invite yourself.");
+                    setAlertState({ visible: true, title: "That's you!", message: "You cannot invite yourself." });
                 } else {
                     setFoundUser(u);
                 }
             } else {
-                Alert.alert("Not Found", "No user found with this code.");
+                setAlertState({ visible: true, title: "Not Found", message: "No user found with this code." });
             }
         } catch (e) {
             console.error(e);
-            Alert.alert("Error", "Search failed.");
+            setAlertState({ visible: true, title: "Error", message: "Search failed." });
         } finally {
             setSearching(false);
         }
@@ -121,7 +130,7 @@ export default function StudentSearchScreen() {
         const targetEmail = emailOverride || email;
 
         if (!targetEmail.trim()) {
-            Alert.alert("Error", "Please enter an email address.");
+            setAlertState({ visible: true, title: "Error", message: "Please enter an email address." });
             return;
         }
 
@@ -164,7 +173,7 @@ export default function StudentSearchScreen() {
             });
 
         } catch (e: any) {
-            Alert.alert("Error", e.message || "Failed to send invite.");
+            setAlertState({ visible: true, title: "Error", message: e.message || "Failed to send invite." });
         } finally {
             setLoading(false);
         }
@@ -402,6 +411,19 @@ export default function StudentSearchScreen() {
                             setSuccessAlert(prev => ({ ...prev, visible: false }));
                             if (successAlert.onOk) successAlert.onOk();
                         }
+                    }
+                ]}
+            />
+
+            <CustomAlert
+                visible={alertState.visible}
+                title={alertState.title}
+                message={alertState.message}
+                onClose={() => setAlertState(prev => ({ ...prev, visible: false }))}
+                buttons={alertState.buttons || [
+                    {
+                        text: "OK",
+                        onPress: () => setAlertState(prev => ({ ...prev, visible: false }))
                     }
                 ]}
             />

@@ -192,6 +192,7 @@ export default function TeacherDashboard() {
                 notifications={notifications}
                 onDelete={deleteNotification}
                 onMarkAsRead={markAsRead}
+                userRole="teacher"
             />
 
             {/* Pending Invites Section */}

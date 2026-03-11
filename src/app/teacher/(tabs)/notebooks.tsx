@@ -184,7 +184,7 @@ export default function TeacherNotebooksScreen() {
     const fetchTeacherGroups = async () => {
         if (!user) return;
         try {
-            const q = query(collection(db, 'groups'), where('teacherId', '==', user.uid));
+            const q = query(collection(db, 'groups'), where('ownerId', '==', user.uid));
             const snap = await getDocs(q);
             setTeacherGroups(snap.docs.map(d => ({
                 id: d.id,
@@ -211,7 +211,7 @@ export default function TeacherNotebooksScreen() {
                 }
 
                 // CRITICAL: Re-fetch groups to get fresh student data
-                const freshGroupsQ = query(collection(db, 'groups'), where('teacherId', '==', user.uid));
+                const freshGroupsQ = query(collection(db, 'groups'), where('ownerId', '==', user.uid));
                 const freshGroupsSnap = await getDocs(freshGroupsQ);
                 const freshGroups: GroupInfo[] = freshGroupsSnap.docs.map(d => ({
                     id: d.id,

@@ -94,13 +94,15 @@ const ArrowToolbarWrapper = ({
     arrows,
     elements,
     setArrows,
-    setSelectedArrowId
+    setSelectedArrowId,
+    addToHistory
 }: {
     selectedArrowId: string,
     arrows: Arrow[],
     elements: CanvasElement[],
     setArrows: React.Dispatch<React.SetStateAction<Arrow[]>>,
-    setSelectedArrowId: (id: string | null) => void
+    setSelectedArrowId: (id: string | null) => void,
+    addToHistory: () => void
 }) => {
     const arrow = arrows.find(a => a.id === selectedArrowId);
     const source = elements.find(e => e.id === arrow?.sourceNodeId);
@@ -133,9 +135,11 @@ const ArrowToolbarWrapper = ({
                 arrow={arrow}
                 scale={1}
                 onUpdate={(updates) => {
+                    addToHistory();
                     setArrows(prev => prev.map(a => a.id === arrow.id ? { ...a, ...updates } : a));
                 }}
                 onDelete={() => {
+                    addToHistory();
                     setArrows(prev => prev.filter(a => a.id !== arrow.id));
                     setSelectedArrowId(null);
                 }}
@@ -380,8 +384,8 @@ export default function PageScreen() {
 
     // --- CANVAS STATE ---
     const [elements, setElements] = useState<CanvasElement[]>([]);
-    const [history, setHistory] = useState<CanvasElement[][]>([]);
-    const [redoStack, setRedoStack] = useState<CanvasElement[][]>([]);
+    const [history, setHistory] = useState<{ elements: CanvasElement[]; arrows: Arrow[] }[]>([]);
+    const [redoStack, setRedoStack] = useState<{ elements: CanvasElement[]; arrows: Arrow[] }[]>([]);
     const pageRef = useRef<Page | null>(null);
 
     // ... inside component
@@ -592,12 +596,14 @@ export default function PageScreen() {
     useEffect(() => { colorRef.current = selectedColor; }, [selectedColor]);
     useEffect(() => { activeTextRef.current = activeTextInput; }, [activeTextInput]);
     useEffect(() => { elementsRef.current = elements; }, [elements]);
+    const arrowsRef = useRef(arrows);
+    useEffect(() => { arrowsRef.current = arrows; }, [arrows]);
 
     // History Helpers... (keep existing)
     const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     const addToHistory = () => {
-        setHistory(prev => [...prev, elementsRef.current]);
+        setHistory(prev => [...prev, { elements: elementsRef.current, arrows: arrowsRef.current }]);
         setRedoStack([]);
     };
 
@@ -629,10 +635,8 @@ export default function PageScreen() {
                 color: selectedColor || '#000000'
             };
 
+            addToHistory();
             setArrows(prev => [...prev, newArrow]);
-
-            // Log creation for undo/redo (integration later)
-            // addToHistory();
 
             // Reset
             // Reset
@@ -643,17 +647,19 @@ export default function PageScreen() {
 
     const handleUndo = () => {
         if (history.length === 0) return;
-        const previousState = history[history.length - 1];
-        setRedoStack(prev => [elements, ...prev]);
-        setElements(previousState);
-        setHistory(prev => prev.slice(0, -1));
+        const prev = history[history.length - 1];
+        setRedoStack(prevStack => [{ elements, arrows }, ...prevStack]);
+        setElements(prev.elements);
+        setArrows(prev.arrows);
+        setHistory(h => h.slice(0, -1));
     };
 
     const handleRedo = () => {
         if (redoStack.length === 0) return;
-        const nextState = redoStack[0];
-        setHistory(prev => [...prev, elements]);
-        setElements(nextState);
+        const next = redoStack[0];
+        setHistory(prev => [...prev, { elements, arrows }]);
+        setElements(next.elements);
+        setArrows(next.arrows);
         setRedoStack(prev => prev.slice(1));
     };
 
@@ -1567,10 +1573,11 @@ export default function PageScreen() {
                 { text: "Cancel", style: "cancel" },
                 {
                     text: "Clear", style: 'destructive', onPress: () => {
-                        // Optional: Save to history before clearing to allow Undo
-                        setHistory(prev => [...prev, elements]);
+                        // Save to history before clearing to allow Undo
+                        setHistory(prev => [...prev, { elements, arrows }]);
                         setRedoStack([]);
                         setElements([]);
+                        setArrows([]);
                     }
                 }
             ]
@@ -2012,6 +2019,8 @@ export default function PageScreen() {
                             backgroundColor: '#1a1a1a',
                             borderBottomWidth: 1,
                             borderBottomColor: '#333',
+                            zIndex: 200,
+                            elevation: 5,
                         }}>
                             {/* Edit/Save Button */}
                             <TouchableOpacity onPress={toggleEditMode}>
@@ -2188,6 +2197,7 @@ export default function PageScreen() {
                                             elements={elements}
                                             setArrows={setArrows}
                                             setSelectedArrowId={setSelectedArrowId}
+                                            addToHistory={addToHistory}
                                         />
                                     </Animated.View>
                                 )}
@@ -2353,13 +2363,13 @@ export default function PageScreen() {
                         <View style={styles.modalOverlay}>
                             <View style={styles.modalContent}>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-                                    <Text style={{ fontSize: 22, fontWeight: 'bold', color: 'black' }}>Session Complete!</Text>
+                                    <Text style={{ fontSize: 22, fontWeight: 'bold', color: 'white' }}>Session Complete!</Text>
                                     <TouchableOpacity onPress={handleCloseReview} style={{ padding: 5 }}>
-                                        <MaterialCommunityIcons name="close" size={24} color="#666" />
+                                        <MaterialCommunityIcons name="close" size={24} color="#aaa" />
                                     </TouchableOpacity>
                                 </View>
 
-                                <Text style={{ fontSize: 16, color: '#666', marginBottom: 20, textAlign: 'center' }}>How well did you remember this topic?</Text>
+                                <Text style={{ fontSize: 16, color: '#aaa', marginBottom: 20, textAlign: 'center' }}>How well did you remember this topic?</Text>
 
                                 <View style={styles.retentionContainer}>
                                     {[0.95, 0.9, 0.85, 0.8].map(r => (
@@ -2381,7 +2391,7 @@ export default function PageScreen() {
                                         // Gradient Logic: 1 (Red/Hard) -> 10 (Green/Easy)
                                         // Interpolate Hue: Red (0) -> Green (120)
                                         const hue = ((num - 1) / 9) * 120; // 0 to 120
-                                        const backgroundColor = `hsl(${hue}, 80%, 60%)`;
+                                        const backgroundColor = `hsl(${hue}, 80%, 45%)`;
 
                                         return (
                                             <Pressable
@@ -2389,14 +2399,14 @@ export default function PageScreen() {
                                                 style={({ pressed }) => [
                                                     styles.ratingBtn,
                                                     {
-                                                        backgroundColor: pressed ? '#ddd' : backgroundColor,
-                                                        borderColor: pressed ? '#333' : 'transparent',
+                                                        backgroundColor: pressed ? '#555' : backgroundColor,
+                                                        borderColor: pressed ? '#888' : 'transparent',
                                                         borderWidth: 1
                                                     }
                                                 ]}
                                                 onPress={() => submitReview(num)}
                                             >
-                                                <Text style={[styles.ratingText, { color: 'white', fontWeight: 'bold', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 2 }]}>{num}</Text>
+                                                <Text style={[styles.ratingText, { color: 'white', fontWeight: 'bold', fontSize: 16, textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }]}>{num}</Text>
                                             </Pressable>
                                         );
                                     })}
@@ -2409,24 +2419,24 @@ export default function PageScreen() {
                     {isPlanTimeModalVisible && (
                         <View style={styles.modalOverlay}>
                             <View style={styles.modalContent}>
-                                <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', color: 'black' }}>Set Learning Time</Text>
-                                <Text style={{ fontSize: 16, color: '#666', marginBottom: 20, textAlign: 'center' }}>
+                                <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', color: 'white' }}>Set Learning Time</Text>
+                                <Text style={{ fontSize: 16, color: '#aaa', marginBottom: 20, textAlign: 'center' }}>
                                     How many minutes do you plan to spend on this topic?
                                 </Text>
 
                                 <TextInput
                                     style={{
-                                        backgroundColor: '#f5f5f5',
+                                        backgroundColor: '#2a2a2a',
                                         padding: 15,
                                         borderRadius: 10,
                                         fontSize: 18,
-                                        color: 'black',
+                                        color: 'white',
                                         marginBottom: 20,
                                         borderWidth: 1,
-                                        borderColor: '#ddd'
+                                        borderColor: '#444'
                                     }}
                                     placeholder="Enter minutes"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor="#777"
                                     keyboardType="numeric"
                                     value={pendingPlannedTime}
                                     onChangeText={setPendingPlannedTime}
@@ -2438,7 +2448,7 @@ export default function PageScreen() {
                                             paddingVertical: 12,
                                             paddingHorizontal: 20,
                                             borderRadius: 8,
-                                            backgroundColor: '#f0f0f0',
+                                            backgroundColor: '#333',
                                             flex: 1,
                                             marginRight: 10,
                                             opacity: pressed ? 0.7 : 1,
@@ -2447,7 +2457,7 @@ export default function PageScreen() {
                                         })}
                                         onPress={() => handleSavePlannedTimeAndStart(false)}
                                     >
-                                        <Text style={{ color: '#666', fontWeight: '600' }}>Save for Later</Text>
+                                        <Text style={{ color: '#ccc', fontWeight: '600' }}>Save for Later</Text>
                                     </Pressable>
                                     <Pressable
                                         style={({ pressed }) => ({
@@ -2477,7 +2487,7 @@ export default function PageScreen() {
                                         setPendingPlannedTime('');
                                     }}
                                 >
-                                    <Text style={{ color: '#999' }}>Cancel</Text>
+                                    <Text style={{ color: '#777' }}>Cancel</Text>
                                 </Pressable>
                             </View>
                         </View>
@@ -2543,20 +2553,20 @@ const styles = StyleSheet.create({
     shapeMenu: { flexDirection: 'row', flexWrap: 'wrap', backgroundColor: 'white', padding: 10, borderRadius: 10, marginBottom: 10, elevation: 5, gap: 10 },
     shapeOption: { padding: 5, borderWidth: 1, borderColor: '#eee', borderRadius: 5 },
 
-    modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
-    modalContent: { backgroundColor: 'white', width: '90%', padding: 25, borderRadius: 16 },
-    modalTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
-    modalSubtitle: { fontSize: 16, color: '#666', marginBottom: 20, textAlign: 'center' },
+    modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
+    modalContent: { backgroundColor: '#1E1E1E', width: '90%', padding: 25, borderRadius: 16 },
+    modalTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', color: 'white' },
+    modalSubtitle: { fontSize: 16, color: '#aaa', marginBottom: 20, textAlign: 'center' },
     buttonsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
-    ratingBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#eee' },
+    ratingBtn: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#444' },
     ratingText: { fontWeight: 'bold' },
 
-    label: { fontSize: 16, fontWeight: 'bold', marginTop: 20, marginBottom: 10, alignSelf: 'center', color: 'black' },
+    label: { fontSize: 16, fontWeight: 'bold', marginTop: 20, marginBottom: 10, alignSelf: 'center', color: 'white' },
 
     retentionContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 20 },
-    retentionBtn: { backgroundColor: '#f5f5f5', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 20, minWidth: '40%', alignItems: 'center', borderWidth: 1, borderColor: '#eee' },
-    activeRetentionBtn: { backgroundColor: '#35c128', borderColor: '#35c128' },
-    retentionText: { fontSize: 14, fontWeight: 'bold', color: '#666' },
+    retentionBtn: { backgroundColor: '#2a2a2a', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 20, minWidth: '40%', alignItems: 'center', borderWidth: 1, borderColor: '#444' },
+    activeRetentionBtn: { backgroundColor: '#4CAF50', borderColor: '#4CAF50' },
+    retentionText: { fontSize: 14, fontWeight: 'bold', color: '#aaa' },
     activeRetentionText: { color: 'white' },
 });
 

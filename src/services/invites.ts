@@ -84,7 +84,7 @@ export const sendInvite = async (fromUser: User, toEmail: string, type: 'teacher
         recipientUid,
         "New Invitation",
         `${fromUser.displayName} wants to link with you.`,
-        'other', // or new type 'invite_received' if supported, using 'other' for safety for now or existing pattern
+        'new_invite',
         inviteRef.id
     );
 };
@@ -122,11 +122,13 @@ export const rejectInvite = async (inviteId: string) => {
 };
 
 // Accept an invite
+// Uses a batch write so all updates (invite status + both user profiles) are atomic.
 export const acceptInvite = async (invite: Invite, currentUserUid: string) => {
+    const batch = writeBatch(db);
     const inviteRef = doc(db, 'invites', invite.id);
 
     // 1. Mark as accepted
-    await updateDoc(inviteRef, { status: 'accepted' });
+    batch.update(inviteRef, { status: 'accepted' });
 
     // 2. Link Users
     if (invite.type === 'parent_to_student' || invite.type === 'student_to_parent') {
@@ -142,12 +144,12 @@ export const acceptInvite = async (invite: Invite, currentUserUid: string) => {
         }
 
         // Update Student Profile (add parent)
-        await updateDoc(doc(db, 'users', studentUid), {
+        batch.update(doc(db, 'users', studentUid), {
             linkedParents: arrayUnion(parentUid)
         });
 
         // Update Parent Profile (add student)
-        await updateDoc(doc(db, 'users', parentUid), {
+        batch.update(doc(db, 'users', parentUid), {
             linkedStudents: arrayUnion(studentUid)
         });
 
@@ -164,27 +166,17 @@ export const acceptInvite = async (invite: Invite, currentUserUid: string) => {
         }
 
         // Update Student Profile
-        // (In real app, we check if docs exist. Here assuming they do)
-        await updateDoc(doc(db, 'users', studentUid), {
+        batch.update(doc(db, 'users', studentUid), {
             linkedTeachers: arrayUnion(teacherUid)
         });
 
-        // Update Teacher Profile (Optional, if we store linkedStudents array, typically we query by linkedTeachers)
-        // But if we want a fast read for "My Classroom":
-        // Let's assume we maintain a 'linkedStudents' array on Teacher for ease
-        /* 
-           Note: The Schema had 'linkedStudents' on ParentProfile but generic 'TeacherProfile' 
-           didn't explicitly list it in the file view I saw earlier (lines 19-22 of schema.ts).
-           I will add it blindly to 'users' collection update safely.
-        */
-        try {
-            await updateDoc(doc(db, 'users', teacherUid), {
-                linkedStudents: arrayUnion(studentUid)
-            });
-        } catch (e) {
-            console.log("Could not update teacher linkedStudents:", e);
-        }
+        // Update Teacher Profile
+        batch.update(doc(db, 'users', teacherUid), {
+            linkedStudents: arrayUnion(studentUid)
+        });
     }
+
+    await batch.commit();
 };
 
 // Unlink user (remove connection)
@@ -230,7 +222,7 @@ export const unlinkUser = async (teacherUid: string, studentUid: string) => {
     // 3. Remove student from all teacher's groups
     const groupsQ = query(
         collection(db, 'groups'),
-        where('teacherId', '==', teacherUid),
+        where('ownerId', '==', teacherUid),
         where('studentIds', 'array-contains', studentUid)
     );
     const groupsSnap = await getDocs(groupsQ);

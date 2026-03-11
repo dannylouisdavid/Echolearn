@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView, Modal, Share } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Modal, Share } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -23,6 +23,14 @@ export default function LinkStudentsScreen() {
     const [searching, setSearching] = useState(false);
     const [showCopiedModal, setShowCopiedModal] = useState(false);
     const [successAlert, setSuccessAlert] = useState<{ visible: boolean, message: string, onOk?: () => void }>({ visible: false, message: '' });
+
+    // Generic alert state for error/info messages (dark theme)
+    const [alertState, setAlertState] = useState<{
+        visible: boolean;
+        title: string;
+        message: string;
+        buttons?: { text: string; onPress: () => void; style?: 'cancel' | 'destructive' | 'default' }[];
+    }>({ visible: false, title: '', message: '' });
 
     // Teacher's Own Code
     const [myInviteCode, setMyInviteCode] = useState<string | null>(null);
@@ -72,33 +80,27 @@ export default function LinkStudentsScreen() {
     };
 
     const handleUnlink = (student: any) => {
-        Alert.alert(
-            "Remove Student",
-            `Are you sure you want to remove ${student.displayName} from your classroom?`,
-            [
-                { text: "Cancel", style: "cancel" },
+        setAlertState({
+            visible: true,
+            title: "Remove Student",
+            message: `Are you sure you want to remove ${student.displayName} from your classroom?`,
+            buttons: [
+                { text: "Cancel", style: "cancel", onPress: () => setAlertState(prev => ({ ...prev, visible: false })) },
                 {
                     text: "Remove",
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            // Note: unlinkUser logic might need to be symmetric (student unlinks teacher OR teacher unlinks student).
-                            // Assuming unlinkUser handles bidirectional removal or we just remove from student's list.
-                            // Ideally, we remove teacherID from student's linkedTeachers.
-                            await unlinkUser(user!.uid, student.uid); // Swapped args if generic, but usually (target, remover) or vice versa. 
-                            // Actually existing unlinkUser implementation usually removes 'target' from 'currentUser's list.
-                            // But for teacher removing student, we want to remove 'teacher' from 'student's list.
-                            // Let's assume the service handles it or we might need a specific 'unlinkStudent' function.
-                            // For now, re-using unlinkUser and optimistic update.
-
+                            setAlertState(prev => ({ ...prev, visible: false }));
+                            await unlinkUser(user!.uid, student.uid);
                             setLinkedStudents(prev => prev.filter(s => s.uid !== student.uid));
                         } catch (e) {
-                            Alert.alert("Error", "Could not remove student.");
+                            setAlertState({ visible: true, title: "Error", message: "Could not remove student." });
                         }
                     }
                 }
             ]
-        );
+        });
     };
 
     const handleCodeSearch = async () => {
@@ -109,18 +111,18 @@ export default function LinkStudentsScreen() {
             const u = await getUserByInviteCode(inviteCode.trim());
             if (u) {
                 if (u.role !== 'student') {
-                    Alert.alert("Invalid User", "You can only connect with Students.");
+                    setAlertState({ visible: true, title: "Invalid User", message: "You can only connect with Students." });
                 } else if (u.uid === user?.uid) {
-                    Alert.alert("That's you!", "You cannot invite yourself.");
+                    setAlertState({ visible: true, title: "That's you!", message: "You cannot invite yourself." });
                 } else {
                     setFoundUser(u);
                 }
             } else {
-                Alert.alert("Not Found", "No student found with this code.");
+                setAlertState({ visible: true, title: "Not Found", message: "No student found with this code." });
             }
         } catch (e) {
             console.error(e);
-            Alert.alert("Error", "Search failed.");
+            setAlertState({ visible: true, title: "Error", message: "Search failed." });
         } finally {
             setSearching(false);
         }
@@ -130,7 +132,7 @@ export default function LinkStudentsScreen() {
         const targetEmail = emailOverride || email;
 
         if (!targetEmail.trim()) {
-            Alert.alert("Error", "Please enter an email address.");
+            setAlertState({ visible: true, title: "Error", message: "Please enter an email address." });
             return;
         }
 
@@ -166,7 +168,7 @@ export default function LinkStudentsScreen() {
             });
 
         } catch (e: any) {
-            Alert.alert("Error", e.message || "Failed to send invite.");
+            setAlertState({ visible: true, title: "Error", message: e.message || "Failed to send invite." });
         } finally {
             setLoading(false);
         }
@@ -377,6 +379,19 @@ export default function LinkStudentsScreen() {
                             setSuccessAlert(prev => ({ ...prev, visible: false }));
                             if (successAlert.onOk) successAlert.onOk();
                         }
+                    }
+                ]}
+            />
+
+            <CustomAlert
+                visible={alertState.visible}
+                title={alertState.title}
+                message={alertState.message}
+                onClose={() => setAlertState(prev => ({ ...prev, visible: false }))}
+                buttons={alertState.buttons || [
+                    {
+                        text: "OK",
+                        onPress: () => setAlertState(prev => ({ ...prev, visible: false }))
                     }
                 ]}
             />

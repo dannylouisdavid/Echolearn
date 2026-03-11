@@ -36,6 +36,9 @@ export default function StudentDashboard() {
     const [showNotifications, setShowNotifications] = useState(false);
     const [declineAlert, setDeclineAlert] = useState<{ visible: boolean, invite: Invite | null }>({ visible: false, invite: null });
 
+    // Generic alert state for dark-themed messages
+    const [alertState, setAlertState] = useState<{ visible: boolean; title: string; message: string }>({ visible: false, title: '', message: '' });
+
     // My Groups
     const [myGroups, setMyGroups] = useState<{ id: string; name: string; teacherName: string }[]>([]);
 
@@ -127,10 +130,10 @@ export default function StudentDashboard() {
     const onAcceptInvite = async (invite: Invite) => {
         try {
             await acceptInvite(invite, user!.uid);
-            Alert.alert("Success", "Connected successfully!");
+            setAlertState({ visible: true, title: "Success", message: "Connected successfully!" });
             fetchInvites();
         } catch (e) {
-            Alert.alert("Error", "Could not accept invite.");
+            setAlertState({ visible: true, title: "Error", message: "Could not accept invite." });
         }
     };
 
@@ -144,7 +147,7 @@ export default function StudentDashboard() {
             await rejectInvite(declineAlert.invite.id);
             fetchInvites();
         } catch (e) {
-            Alert.alert("Error", "Could not decline invite.");
+            setAlertState({ visible: true, title: "Error", message: "Could not decline invite." });
         } finally {
             setDeclineAlert({ visible: false, invite: null });
         }
@@ -384,6 +387,7 @@ export default function StudentDashboard() {
                         notifications={notifications}
                         onDelete={deleteNotification}
                         onMarkAsRead={markAsRead}
+                        userRole="student"
                     />
                 </View>
 
@@ -600,6 +604,19 @@ export default function StudentDashboard() {
                         text: "Decline",
                         onPress: handleConfirmReject,
                         style: "destructive"
+                    }
+                ]}
+            />
+
+            <CustomAlert
+                visible={alertState.visible}
+                title={alertState.title}
+                message={alertState.message}
+                onClose={() => setAlertState(prev => ({ ...prev, visible: false }))}
+                buttons={[
+                    {
+                        text: "OK",
+                        onPress: () => setAlertState(prev => ({ ...prev, visible: false }))
                     }
                 ]}
             />

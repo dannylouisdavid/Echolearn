@@ -125,7 +125,7 @@ export interface Notification {
     userId: string;
     title: string;
     message: string;
-    type: 'invite_rejected' | 'invite_accepted' | 'topic_assigned' | 'notebook_assigned' | 'group_added' | 'comment_added' | 'other';
+    type: 'invite_rejected' | 'invite_accepted' | 'new_invite' | 'topic_assigned' | 'notebook_assigned' | 'group_added' | 'comment_added' | 'other';
     read: boolean;
     createdAt: number;
     relatedId?: string; // e.g. inviteId

@@ -1,6 +1,6 @@
 import { Modal, View, Text, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Notification } from '../types/schema';
+import { Notification, UserRole } from '../types/schema';
 import { useRouter } from 'expo-router';
 
 interface NotificationsModalProps {
@@ -9,9 +9,10 @@ interface NotificationsModalProps {
     notifications: Notification[];
     onDelete: (id: string) => void;
     onMarkAsRead?: (id: string) => void;
+    userRole?: UserRole;
 }
 
-export default function NotificationsModal({ visible, onClose, notifications, onDelete, onMarkAsRead }: NotificationsModalProps) {
+export default function NotificationsModal({ visible, onClose, notifications, onDelete, onMarkAsRead, userRole }: NotificationsModalProps) {
     const router = useRouter();
 
     // Handle notification click - navigate to related content and mark as read
@@ -23,7 +24,7 @@ export default function NotificationsModal({ visible, onClose, notifications, on
 
         // Handle specific nav for comments using data.threadId if relatedId is missing
         const targetId = item.relatedId || (item.data as any)?.threadId;
-        if (!targetId && item.type !== 'notebook_assigned') return;
+        if (!targetId && item.type !== 'notebook_assigned' && item.type !== 'new_invite') return;
 
         onClose(); // Close the modal first
 
@@ -46,6 +47,15 @@ export default function NotificationsModal({ visible, onClose, notifications, on
             case 'group_added':
                 // No specific navigation for group added
                 break;
+            case 'new_invite':
+                // Navigate to the linking page based on user role
+                // Student dashboard already shows pending invites, no navigation needed
+                if (userRole === 'teacher') {
+                    router.push('/teacher/link-students');
+                } else if (userRole === 'parent') {
+                    router.push('/parent/(tabs)/link-student');
+                }
+                break;
             default:
                 // Other notifications don't navigate
                 break;
@@ -54,7 +64,7 @@ export default function NotificationsModal({ visible, onClose, notifications, on
 
     const renderItem = ({ item }: { item: Notification }) => {
         const targetId = item.relatedId || (item.data as any)?.threadId;
-        const isClickable = targetId && (item.type === 'topic_assigned' || item.type === 'notebook_assigned' || item.type === 'comment_added');
+        const isClickable = item.type === 'new_invite' || (targetId && (item.type === 'topic_assigned' || item.type === 'notebook_assigned' || item.type === 'comment_added'));
         const isUnread = !item.read;
 
         return (
@@ -67,18 +77,20 @@ export default function NotificationsModal({ visible, onClose, notifications, on
                     <MaterialCommunityIcons
                         name={
                             item.type === 'invite_rejected' ? 'alert-circle' :
-                                item.type === 'topic_assigned' || item.type === 'notebook_assigned' ? 'book-open-variant' :
-                                    item.type === 'comment_added' ? 'comment-text-multiple' :
-                                        item.type === 'group_added' ? 'account-group' :
-                                            'bell'
+                                item.type === 'new_invite' ? 'email-open' :
+                                    item.type === 'topic_assigned' || item.type === 'notebook_assigned' ? 'book-open-variant' :
+                                        item.type === 'comment_added' ? 'comment-text-multiple' :
+                                            item.type === 'group_added' ? 'account-group' :
+                                                'bell'
                         }
                         size={24}
                         color={
                             item.type === 'invite_rejected' ? '#F44336' :
-                                item.type === 'topic_assigned' || item.type === 'notebook_assigned' ? '#2196F3' :
-                                    item.type === 'comment_added' ? '#E91E63' :
-                                        item.type === 'group_added' ? '#FF9800' :
-                                            '#35c128'
+                                item.type === 'new_invite' ? '#2196F3' :
+                                    item.type === 'topic_assigned' || item.type === 'notebook_assigned' ? '#2196F3' :
+                                        item.type === 'comment_added' ? '#E91E63' :
+                                            item.type === 'group_added' ? '#FF9800' :
+                                                '#35c128'
                         }
                     />
                 </View>

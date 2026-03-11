@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { useAuth } from '../../../services/auth/AuthContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -42,6 +42,9 @@ export default function ParentDashboard() {
     // Invites
     const [invites, setInvites] = useState<Invite[]>([]);
     const [declineAlert, setDeclineAlert] = useState<{ visible: boolean, invite: Invite | null }>({ visible: false, invite: null });
+
+    // Generic alert state for dark-themed messages
+    const [alertState, setAlertState] = useState<{ visible: boolean; title: string; message: string }>({ visible: false, title: '', message: '' });
 
     // Notifications
     const { notifications, unreadCount, markAllAsRead, markAsRead, deleteNotification } = useNotifications(user?.uid);
@@ -166,11 +169,11 @@ export default function ParentDashboard() {
     const onAcceptInvite = async (invite: Invite) => {
         try {
             await acceptInvite(invite, user!.uid);
-            Alert.alert("Success", "Connected successfully!");
-            await refreshProfile(); // Refresh profile to get updated linkedStudents
+            setAlertState({ visible: true, title: "Success", message: "Connected successfully!" });
+            await refreshProfile();
             fetchDashboardData();
         } catch (e: any) {
-            Alert.alert("Error", e.message || "Could not accept invite.");
+            setAlertState({ visible: true, title: "Error", message: e.message || "Could not accept invite." });
         }
     };
 
@@ -184,7 +187,7 @@ export default function ParentDashboard() {
             await rejectInvite(declineAlert.invite.id);
             fetchDashboardData();
         } catch (e: any) {
-            Alert.alert("Error", e.message || "Could not decline invite.");
+            setAlertState({ visible: true, title: "Error", message: e.message || "Could not decline invite." });
         } finally {
             setDeclineAlert({ visible: false, invite: null });
         }
@@ -326,6 +329,7 @@ export default function ParentDashboard() {
                 notifications={notifications}
                 onDelete={deleteNotification}
                 onMarkAsRead={markAsRead}
+                userRole="parent"
             />
 
             <CustomAlert
@@ -343,6 +347,19 @@ export default function ParentDashboard() {
                         text: "Decline",
                         onPress: handleConfirmReject,
                         style: "destructive"
+                    }
+                ]}
+            />
+
+            <CustomAlert
+                visible={alertState.visible}
+                title={alertState.title}
+                message={alertState.message}
+                onClose={() => setAlertState(prev => ({ ...prev, visible: false }))}
+                buttons={[
+                    {
+                        text: "OK",
+                        onPress: () => setAlertState(prev => ({ ...prev, visible: false }))
                     }
                 ]}
             />

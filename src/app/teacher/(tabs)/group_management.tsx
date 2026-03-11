@@ -30,7 +30,7 @@ export default function GroupManagementScreen() {
 
     const fetchGroups = async () => {
         try {
-            const q = query(collection(db, 'groups'), where('teacherId', '==', user?.uid));
+            const q = query(collection(db, 'groups'), where('ownerId', '==', user?.uid));
             const snap = await getDocs(q);
             setGroups(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         } catch (e) {

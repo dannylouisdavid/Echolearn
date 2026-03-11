@@ -318,7 +318,7 @@ export default function GroupDetailScreen() {
             // 1. For each selected student, find if they are in ANY OTHER group owned by this teacher
             // This requires reading all groups for this teacher. 
             // Optimization: Read all groups for teacher ONCE.
-            const groupsQ = query(collection(db, 'groups'), where('teacherId', '==', user?.uid));
+            const groupsQ = query(collection(db, 'groups'), where('ownerId', '==', user?.uid));
             const groupsSnap = await getDocs(groupsQ);
             const titleGroupRef = groupsSnap.docs.find(d => d.id === id); // Current group doc (sanity check)
 

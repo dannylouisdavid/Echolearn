@@ -71,7 +71,7 @@ import { addDoc, collection, updateDoc, doc, getDocs, query, where, orderBy, del
 import { db } from './firebaseConfig';
 import { Notification } from '../types/schema';
 
-export const createNotification = async (userId: string, title: string, message: string, type: 'invite_rejected' | 'invite_accepted' | 'other', relatedId?: string) => {
+export const createNotification = async (userId: string, title: string, message: string, type: 'invite_rejected' | 'invite_accepted' | 'new_invite' | 'other', relatedId?: string) => {
     try {
         await addDoc(collection(db, 'notifications'), {
             userId,
